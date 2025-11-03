@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        function WeatherApp() {
+            const [location, setLocation] = React.useState("New York");
+            const [weatherData, setWeatherData] = React.useState(null);
+            const [error, setError] = React.useState(null);
+
+            const fetchWeather = async (city) => {
+                try {
+                    // Open Meteo Geocoding API
+                    const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`);
+                    const geoData = await geoResponse.json();
+                    
+                    if (!geoData.results || geoData.results.length === 0) {
+                        throw new Error('City not found');
+                    }
+
+                    const { latitude, longitude } = geoData.results[0];
+
+                    // Weather forecast API
+                    const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=temperature_2m,relativehumidity_2m,windspeed_10m`);
+                    const weatherData = await weatherResponse.json();
+
+                    setWeatherData({
+                        city: city,
+                        temperature: weatherData.current_weather.temperature,
+                        humidity: weatherData.hourly.relativehumidity_2m[0],
+                        windSpeed: weatherData.current_weather.windspeed
+                    });
+                    setError(null);
+                } catch (err) {
+                    setError('Could not fetch weather data');
+                    setWeatherData(null);
+                }
+            };
+
+            React.useEffect(() => {
+                fetchWeather(location);
+            }, [location]);
+
+            const styles = {
+                container: {
+                    fontFamily: 'Arial, sans-serif',
+                    maxWidth: '400px',
+                    margin: '0 auto',
+                    padding: '20px',
+                    textAlign: 'center',
+                    backgroundColor: '#f0f0f0',
+                    borderRadius: '10px'
+                },
+                input: {
+                    width: '100%',
+                    padding: '10px',
+                    marginBottom: '15px',
+                    borderRadius: '5px',
+                    border: '1px solid #ccc'
+                },
+                weatherCard: {
+                    backgroundColor: 'orange',
+                    padding: '20px',
+                    borderRadius: '10px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                },
+                error: {
+                    color: 'red',
+                    marginBottom: '15px'
+                }
+            };
+
+            return (
+                <div style={styles.container}>
+                    <h1>🌦️ Weather Dashboard</h1>
+                    <input 
+                        type="text" 
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="Enter city name"
+                        style={styles.input}
+                    />
+                    {error && <p style={{color: 'red', marginBottom: '15px'}}>{error}</p>}
+                    {weatherData && (
+                        <div style={styles.weatherCard}>
+                            <h2>{weatherData.city}</h2>
+                            <p>🌡️ Temperature: {weatherData.temperature}°C</p>
+                            <p>💧 Humidity: {weatherData.humidity}%</p>
+                            <p>💨 Wind Speed: {weatherData.windSpeed} km/h</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Render the app
+        ReactDOM.render(
+            <React.StrictMode>
+                <WeatherApp />
+            </React.StrictMode>,
+            document.getElementById('root')
+        );
+    </script>
+</body>
+</html>
